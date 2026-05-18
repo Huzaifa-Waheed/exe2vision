@@ -1,19 +1,34 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import HeaderLogin from "../components/HeaderAfterLogin";
 import { ShieldCheck, Calendar, File, Target, Shield } from "lucide-react";
+import { downloadScanReport } from "../api";
 
-
-const ResultPage=()=> {
+const ResultPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
 
   const {
     fileName = "Unknown.exe",
     date = "N/A",
     confidence = "N/A",
     status = "Benign",
+    scanId,
   } = location.state || {};
+
+  const handleDownload = async () => {
+    if (!scanId) return;
+    try {
+      const res = await downloadScanReport(scanId);
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `scan_${scanId}_report.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed", err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0A1324] text-white px-4 pt-24">
@@ -81,7 +96,7 @@ const ResultPage=()=> {
 
         {/* Buttons */}
         <div className="flex flex-col md:flex-row gap-4 mt-10">
-          <button className="bg-cyan-500 hover:bg-cyan-600 text-white w-full py-3 rounded-xl font-semibold flex justify-center items-center gap-2">
+          <button onClick={handleDownload} disabled={!scanId} className="bg-cyan-500 hover:bg-cyan-600 text-white w-full py-3 rounded-xl font-semibold flex justify-center items-center gap-2 disabled:opacity-50">
             ⬇ Download PDF Report
           </button>
 

@@ -1,12 +1,31 @@
 import { useState } from "react";
 import { Shield, Lock, Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { resetPassword } from "../api";
 
 export default function SetNewPasswordPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [passFocused, setPassFocused] = useState(false);
     const [confirmFocused, setConfirmFocused] = useState(false);
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [error, setError] = useState("");
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { email, otp_code } = location.state || {};
+
+    const handleSave = async () => {
+        if (!password || password.length < 6) { setError("Password must be at least 6 characters"); return; }
+        if (password !== confirmPassword) { setError("Passwords do not match"); return; }
+        setError("");
+        try {
+            await resetPassword(email, otp_code, password);
+            navigate("/login");
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to reset password");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#0A1324] flex flex-col items-center justify-center p-4 md:p-6 lg:p-8">
@@ -30,6 +49,8 @@ export default function SetNewPasswordPage() {
                         <Lock className="text-gray-400 mr-3" size={20} />
                         <input
                             type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
                             onFocus={() => setPassFocused(true)}
                             onBlur={() => setPassFocused(false)}
                             placeholder="••••••••"
@@ -62,6 +83,8 @@ export default function SetNewPasswordPage() {
                         <Lock className="text-gray-400 mr-3" size={20} />
                         <input
                             type={showConfirmPassword ? "text" : "password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
                             onFocus={() => setConfirmFocused(true)}
                             onBlur={() => setConfirmFocused(false)}
                             placeholder="••••••••"
@@ -84,7 +107,8 @@ export default function SetNewPasswordPage() {
                     </div>
                 </div>
 
-                <button className="w-full bg-[#14C9E7] hover:bg-[#11b5d1] text-white font-medium py-3 rounded-lg transition text-base">
+                {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+                <button onClick={handleSave} className="w-full bg-[#14C9E7] hover:bg-[#11b5d1] text-white font-medium py-3 rounded-lg transition text-base">
                     Save Password
                 </button>
 

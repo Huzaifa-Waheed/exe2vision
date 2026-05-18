@@ -1,9 +1,16 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LogOutIcon, ShieldIcon } from "./SVGIcons";
+import { logout } from "../api";
 
 const HeaderLogin = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try { await logout(); } catch (_) {}
+    navigate("/login");
+  };
 
   return (
     <header className="bg-gray-900 border-b border-gray-800 shadow-xl fixed w-full z-20 backdrop-blur-sm bg-gray-900/90">
@@ -56,6 +63,7 @@ const HeaderLogin = () => {
 
           <Link
             to="/login"
+            onClick={handleLogout}
             className="flex items-center justify-center space-x-1.5 text-gray-300 hover:text-red-400 transition-colors text-sm sm:text-base font-medium border border-gray-700 hover:border-red-500 py-1.5 px-3 rounded-xl bg-gray-800 hover:bg-gray-700/50"
           >
             <span>Logout</span>
@@ -108,7 +116,7 @@ const HeaderLogin = () => {
           <Link
             to="/login"
             className="flex items-center justify-center space-x-2 text-gray-300 hover:text-red-400 transition-colors text-lg font-medium border border-gray-700 hover:border-red-500 py-3 px-4 rounded-xl bg-gray-800 hover:bg-gray-700/50"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => { handleLogout(); setMenuOpen(false); }}
           >
             <span>Logout</span>
             <LogOutIcon className="w-5 h-5" />

@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Shield, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 export default function VerifyCode() {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const inputsRef = useRef([]);
   const [timeLeft, setTimeLeft] = useState(300);
   const location = useLocation();
-  const { email } = location.state || {}; // Destructure email from state
+  const { email } = location.state || {};
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,20 +28,23 @@ export default function VerifyCode() {
       const newCode = [...code];
       newCode[index] = value;
       setCode(newCode);
-
-      if (value && index < 5) {
-        inputsRef.current[index + 1].focus();
-      }
+      if (value && index < 5) inputsRef.current[index + 1].focus();
     }
   };
 
   const handleKeyDown = (e, index) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
+    if (e.key === "Backspace" && !code[index] && index > 0)
       inputsRef.current[index - 1].focus();
-    }
   };
 
   const isComplete = code.every((digit) => digit !== "");
+
+  const handleVerify = () => {
+    if (isComplete) {
+      // Pass email + otp to SetNewPassword page
+      navigate("/set-new-password", { state: { email, otp_code: code.join("") } });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0A1324] flex flex-col items-center justify-center p-4 md:p-6 lg:p-8">
@@ -78,11 +79,7 @@ export default function VerifyCode() {
 
         <button
           disabled={!isComplete}
-          onClick={() => {
-            if (isComplete) {
-              navigate("/set-new-password");
-            }
-          }}
+          onClick={handleVerify}
           className={`w-full py-3 rounded-lg text-white font-medium text-base transition ${isComplete
               ? "bg-[#14C9E7] hover:bg-[#11b5d1] cursor-pointer"
               : "bg-gray-600 cursor-not-allowed"

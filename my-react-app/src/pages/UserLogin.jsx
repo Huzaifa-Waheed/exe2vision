@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Shield, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { login, ensureAdmin } from "../api";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,40 +13,47 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
 
-  // Simple email regex for validation
   const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
 
-  const handleLogin = () => {
-  let tempErrors = { email: "", password: "" };
-  let valid = true;
+  const ADMIN_EMAIL = "admin@admin.com";
+  const ADMIN_PASSWORD = "Admin@123";
 
-  if (!email) {
-    tempErrors.email = "Email is required";
-    valid = false;
-  } else if (!validateEmail(email)) {
-    tempErrors.email = "Enter a valid email";
-    valid = false;
-  }
+  const handleLogin = async () => {
+    let tempErrors = { email: "", password: "" };
+    let valid = true;
 
-  if (!password) {
-    tempErrors.password = "Password is required";
-    valid = false;
-  } else if (password.length < 6) {
-    tempErrors.password = "Password must be at least 6 characters";
-    valid = false;
-  }
+    if (!email) { tempErrors.email = "Email is required"; valid = false; }
+    else if (!validateEmail(email)) { tempErrors.email = "Enter a valid email"; valid = false; }
+    if (!password) { tempErrors.password = "Password is required"; valid = false; }
+    else if (password.length < 6) { tempErrors.password = "Password must be at least 6 characters"; valid = false; }
 
-  setErrors(tempErrors);
+    setErrors(tempErrors);
+    if (!valid) return;
 
-  if (!valid) return;
+    // Admin credentials entered — seed if needed then go to dashboard
+    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      try {
+        await ensureAdmin();
+        navigate("/admin-dashboard");
+      } catch (err) {
+        setErrors({ email: "", password: err.response?.data?.detail || "Admin login failed" });
+      }
+      return;
+    }
 
-  // 🔥 ROLE CHECK / ROUTING LOGIC
-  if (email === "tayyba@gmail.com" && password === "123456") {
-    navigate("/admin-dashboard");  // Admin route
-  } else {
-    navigate("/scanmalware");  // Normal user route
-  }
-};
+    try {
+      const res = await login(email, password);
+      const user = res.data.user;
+      if (user.role === "admin") {
+        navigate("/admin-dashboard");
+      } else {
+        navigate("/scanmalware");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Login failed";
+      setErrors({ email: "", password: msg });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0A1324] flex flex-col items-center justify-center p-4 md:p-6 lg:p-8">

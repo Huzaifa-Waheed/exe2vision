@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import {
   TrashIcon,
   CheckCircleIcon,
@@ -9,6 +8,7 @@ import {
   WarningTriangleIcon,
   CheckmarkSquareIcon,
 } from "./SVGIconsAdmin";
+import { getAllScans, deleteScan, deleteSelectedScans, deleteAllScans } from "../api";
 
 const DeleteConfirmationModal = ({ show, onClose, onConfirm, title, message }) => {
   if (!show) return null;
@@ -45,11 +45,16 @@ const AdminDashboard = () => {
   const [confirmAction, setConfirmAction] = useState(() => () => { });
   const [modalContent, setModalContent] = useState({ title: "", message: "" });
 
-  // --- Fetch Scans from API ---
   const fetchScans = async () => {
     try {
-      const res = await axios.get("/admin/scans"); // Adjust baseURL if needed
-      setScans(res.data.scans);
+      const res = await getAllScans();
+      const mapped = res.data.scans.map((s) => ({
+        ...s,
+        email: s.email || `user_${s.user_id}`,
+        status: s.result === "Malware" ? "Malicious" : "Safe",
+        scanDate: s.scanned_at ? new Date(s.scanned_at).toLocaleDateString() : "N/A",
+      }));
+      setScans(mapped);
     } catch (err) {
       console.error("Failed to fetch scans:", err);
     }
@@ -71,34 +76,28 @@ const AdminDashboard = () => {
   // --- Delete API Calls ---
   const executeDeleteAll = async () => {
     try {
-      await axios.delete("/admin/scans/all");
+      await deleteAllScans();
       setSelected([]);
       fetchScans();
       setShowModal(false);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const executeDeleteSelected = async () => {
     try {
-      await axios.delete("/admin/scans", { data: { ids: selected } });
+      await deleteSelectedScans(selected);
       setSelected([]);
       fetchScans();
       setShowModal(false);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const executeDeleteSingle = async (id) => {
     try {
-      await axios.delete(`/admin/scan/${id}`);
+      await deleteScan(id);
       fetchScans();
       setShowModal(false);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   // --- Modal Triggers ---
@@ -231,9 +230,10 @@ const AdminDashboard = () => {
                   </div>
                   <div className="col-span-2 text-sm truncate">{scan.email}</div>
                   <div className="col-span-3 flex items-center text-sm font-medium">
-                    {(scan.status === "Malicious" ? WarningTriangleIcon : CheckmarkSquareIcon) && (
-                      <scan.icon className={`w-4 h-4 mr-2 ${scan.status === "Malicious" ? "text-red-500" : "text-green-500"}`} />
-                    )}
+                    {scan.status === "Malicious"
+                      ? <WarningTriangleIcon className="w-4 h-4 mr-2 text-red-500 flex-shrink-0" />
+                      : <CheckmarkSquareIcon className="w-4 h-4 mr-2 text-green-500 flex-shrink-0" />
+                    }
                     <span className="truncate">{scan.filename}</span>
                   </div>
                   <div className="col-span-2 text-xs text-gray-400">{scan.scanDate}</div>

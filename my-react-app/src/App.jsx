@@ -1,7 +1,5 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-// import Header from "./components/Header";
 import UserLogin from "./pages/UserLogin.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import OTPVerification from "./pages/OTPVerification.jsx";
@@ -14,28 +12,36 @@ import ProgressBar from "./pages/ProgressBar.jsx";
 import Result from "./pages/Result.jsx";
 import ScanHistoryComponent from "./pages/ScanHistory";
 import AdminPage from "./pages/AdminPage.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 const App = () => {
   return (
     <BrowserRouter>
-     
-
-      {/* Page Content */}
-      <div> 
+      <div>
         <Routes>
           <Route path="/" element={<ExeVisionHome />} />
-          { <Route path="/login" element={<UserLogin />} />}
+          <Route path="/login" element={<UserLogin />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/otp-verification" element={<OTPVerification />} />
           <Route path="/set-new-password" element={<SetNewPasswordPage />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/about" element={<AboutResearch />} />
-          <Route path="/scanmalware" element={<ScanMalware />} />
-          <Route path="/progress" element={<ProgressBar />} />
-          <Route path="/result" element={<Result />} />
-          <Route path="/scanhistory" element={<ScanHistoryComponent />} />
-           <Route path="/admin-dashboard" element={<AdminPage />} />
-  
+
+          <Route path="/scanmalware" element={
+            <ProtectedRoute><ScanMalware /></ProtectedRoute>
+          } />
+          <Route path="/progress" element={
+            <ProtectedRoute><ProgressBar /></ProtectedRoute>
+          } />
+          <Route path="/result" element={
+            <ProtectedRoute><Result /></ProtectedRoute>
+          } />
+          <Route path="/scanhistory" element={
+            <ProtectedRoute><ScanHistoryComponent /></ProtectedRoute>
+          } />
+          <Route path="/admin-dashboard" element={
+            <ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>
+          } />
         </Routes>
       </div>
     </BrowserRouter>

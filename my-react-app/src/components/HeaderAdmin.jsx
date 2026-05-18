@@ -1,12 +1,17 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ShieldIcon, LogOutIcon } from "./SVGIcons";
-//import { MenuIcon, XIcon } from "@heroicons/react/outline"; // Heroicons for hamburger & close
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-
+import { logout } from "../api";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try { await logout(); } catch (_) {}
+    navigate("/");
+  };
 
   return (
     <header className="fixed w-full z-10 backdrop-blur-sm bg-gray-900/90 border-b border-gray-800 shadow-xl">
@@ -28,7 +33,7 @@ const Header = () => {
           <Link
             to="/"
             className="flex items-center space-x-1.5 text-gray-300 hover:text-red-400 transition-colors text-sm md:text-base font-medium border border-gray-700 hover:border-red-500 py-1.5 px-3 rounded-xl bg-gray-800 hover:bg-gray-700/50"
-            onClick={() => console.log("Redirecting to login...")}
+            onClick={handleLogout}
           >
             <span>Logout</span>
             <LogOutIcon className="w-4 h-4" />
@@ -59,10 +64,7 @@ const Header = () => {
             <Link
               to="/"
               className="flex items-center justify-between text-gray-300 hover:text-red-400 transition-colors text-base font-medium border border-gray-700 hover:border-red-500 py-2 px-3 rounded-xl bg-gray-800 hover:bg-gray-700/50"
-              onClick={() => {
-                setIsOpen(false);
-                console.log("Redirecting to login...");
-              }}
+              onClick={() => { handleLogout(); setIsOpen(false); }}
             >
               <span>Logout</span>
               <LogOutIcon className="w-4 h-4" />

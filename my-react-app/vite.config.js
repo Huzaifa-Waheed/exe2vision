@@ -2,14 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),tailwindcss()],
+  plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      '/auth': 'http://localhost:8000',
+      '/scan/upload': 'http://localhost:8000',
+      '/scan/history': 'http://localhost:8000',
+      '/scan/report': 'http://localhost:8000',
+      '/admin/scans': 'http://localhost:8000',
+      '/admin/scan': 'http://localhost:8000',
+    },
+  },
 })
-
-
-// export default defineConfig({
-//   plugins: [
-//     tailwindcss(),
-//   ],
-// })

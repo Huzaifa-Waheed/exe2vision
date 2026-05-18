@@ -1,0 +1,23 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pydantic
+python-multipart
+reportlab
+python-dotenv
+email-validator
+
+# For in-process disassembly
+pefile
+capstone
+
+# For asm -> image
+pandas
+numpy>=1.23
+opencv-python
+
+# For ML inference
+torch
+torchvision
+Pillow

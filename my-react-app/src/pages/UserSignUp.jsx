@@ -1,12 +1,28 @@
 import { useState } from "react";
 import { Shield, Mail, Lock, Eye, User, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { register } from "../api";
 
 export default function CreateAccountPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passFocused, setPassFocused] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const handleRegister = async () => {
+    if (!name || !email || !password) { setError("All fields are required"); return; }
+    try {
+      await register(name, email, password);
+      navigate("/scanmalware");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Registration failed");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0A1324] flex flex-col items-center justify-center p-4 md:p-6 lg:p-8">
@@ -31,6 +47,8 @@ export default function CreateAccountPage() {
             <User className="text-gray-400 mr-3" size={20} />
             <input
               type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               onFocus={() => setNameFocused(true)}
               onBlur={() => setNameFocused(false)}
               placeholder="John Doe"
@@ -51,6 +69,8 @@ export default function CreateAccountPage() {
             <Mail className="text-gray-400 mr-3" size={20} />
             <input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               placeholder="your.email@example.com" autoComplete="new-email"
@@ -70,6 +90,8 @@ export default function CreateAccountPage() {
             <Lock className="text-gray-400 mr-3" size={20} />
             <input
               type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               onFocus={() => setPassFocused(true)}
               onBlur={() => setPassFocused(false)}
               placeholder="••••••••"
@@ -92,7 +114,8 @@ export default function CreateAccountPage() {
           </div>
         </div>
 
-        <button className="w-full bg-[#14C9E7] hover:bg-[#11b5d1] text-white font-medium py-3 rounded-lg transition text-base">
+        {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+        <button onClick={handleRegister} className="w-full bg-[#14C9E7] hover:bg-[#11b5d1] text-white font-medium py-3 rounded-lg transition text-base">
           Create Account
         </button>
 

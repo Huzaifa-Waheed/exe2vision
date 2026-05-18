@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
+import { requestReset } from "../api";
 
 export default function ResetPassword() {
     const [email, setEmail] = useState("");
@@ -9,24 +10,18 @@ export default function ResetPassword() {
     const [error, setError] = useState("");
     const navigate = useNavigate();
 
-    // Simple email regex for validation
-    const validateEmail = (email) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    };
+    const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-    const handleSendCode = () => {
-        if (!email) {
-            setError("Email is required");
-            return;
-        }
-        if (!validateEmail(email)) {
-            setError("Please enter a valid email address");
-            return;
-        }
-
-        // Clear error and navigate
+    const handleSendCode = async () => {
+        if (!email) { setError("Email is required"); return; }
+        if (!validateEmail(email)) { setError("Please enter a valid email address"); return; }
         setError("");
-        navigate("/otp-verification", { state: { email } });
+        try {
+            await requestReset(email);
+            navigate("/otp-verification", { state: { email } });
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to send code");
+        }
     };
 
     return (

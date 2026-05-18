@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { CalendarIcon, CheckmarkSquareIcon, DownloadIcon, FilterIcon, WarningTriangleIcon } from "../components/SVGIcons";
 import HeaderLogin from "../components/HeaderAfterLogin";
+import { getScanHistory, downloadScanReport, downloadHistoryReport } from "../api";
 
 const ScanHistory = () => {
   const [statusFilter, setStatusFilter] = useState("All");
@@ -11,33 +11,74 @@ const ScanHistory = () => {
   const [filteredScans, setFilteredScans] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // --- Fetch scan history from API ---
   const fetchScanHistory = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("/history"); // adjust baseURL if needed
-      setScanHistory(res.data.history);
-      setFilteredScans(res.data.history);
-      setLoading(false);
+      const res = await getScanHistory();
+      const data = res.data.history.map((s) => ({
+        ...s,
+        status: s.result === "Malware" ? "Malicious" : "Safe",
+        scanDate: s.scanned_at ? new Date(s.scanned_at).toLocaleDateString() : "N/A",
+      }));
+      setScanHistory(data);
+      setFilteredScans(data);
     } catch (err) {
       console.error("Failed to fetch scan history:", err);
+    } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchScanHistory();
-  }, []);
+  useEffect(() => { fetchScanHistory(); }, []);
 
-  // --- Filter Logic ---
   const applyFilter = () => {
     const filtered = scanHistory.filter((scan) => {
       if (statusFilter !== "All" && scan.status !== statusFilter) return false;
-      if (startDate && new Date(scan.scanDate) < new Date(startDate)) return false;
-      if (endDate && new Date(scan.scanDate) > new Date(endDate)) return false;
+      if (startDate) {
+        const scanDay = new Date(scan.scanned_at);
+        scanDay.setHours(0, 0, 0, 0);
+        if (scanDay < new Date(startDate)) return false;
+      }
+      if (endDate) {
+        const scanDay = new Date(scan.scanned_at);
+        scanDay.setHours(23, 59, 59, 999);
+        if (scanDay > new Date(endDate)) return false;
+      }
       return true;
     });
     setFilteredScans(filtered);
+  };
+
+  const handleDownloadReport = async (scanId) => {
+    try {
+      const res = await downloadScanReport(scanId);
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `scan_${scanId}_report.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed", err);
+    }
+  };
+
+  const handleDownloadOverall = async () => {
+    try {
+      const params = {};
+      if (statusFilter !== "All") params.result = statusFilter === "Malicious" ? "Malware" : "Benign";
+      if (startDate) params.from_date = startDate;
+      if (endDate) params.to_date = endDate;
+      const res = await downloadHistoryReport(params);
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "history_report.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed", err);
+    }
   };
 
   return (
@@ -47,7 +88,7 @@ const ScanHistory = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-white truncate">Scan History</h1>
-          <button className="flex w-full sm:w-auto items-center justify-center md:justify-start bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-3 sm:px-4 rounded-xl text-sm sm:text-base">
+          <button onClick={handleDownloadOverall} className="flex w-full sm:w-auto items-center justify-center md:justify-start bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-3 sm:px-4 rounded-xl text-sm sm:text-base">
             <DownloadIcon className="w-5 h-5 mr-2" /> Download Overall Report
           </button>
         </div>
@@ -138,9 +179,10 @@ const ScanHistory = () => {
                 {filteredScans.map((scan) => (
                   <tr key={scan.id} className="hover:bg-gray-700/40 transition duration-150">
                     <td className="px-3 sm:px-6 py-2 flex items-center space-x-2 sm:space-x-3">
-                      {(scan.status === "Malicious" ? WarningTriangleIcon : CheckmarkSquareIcon) && (
-                        <scan.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${scan.status === "Malicious" ? "text-red-500" : "text-green-500"}`} />
-                      )}
+                      {scan.status === "Malicious"
+                        ? <WarningTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-500 flex-shrink-0" />
+                        : <CheckmarkSquareIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-500 flex-shrink-0" />
+                      }
                       <span className="truncate">{scan.filename}</span>
                     </td>
                     <td className="px-3 sm:px-6 py-2 text-gray-300 hidden sm:table-cell">{scan.scanDate}</td>
@@ -150,7 +192,7 @@ const ScanHistory = () => {
                       </span>
                     </td>
                     <td className="px-3 sm:px-6 py-2 text-right">
-                      <button title="Download Report" className="text-gray-400 hover:text-cyan-400 p-1">
+                      <button title="Download Report" onClick={() => handleDownloadReport(scan.id)} className="text-gray-400 hover:text-cyan-400 p-1">
                         <DownloadIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                       </button>
                     </td>

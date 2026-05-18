@@ -7,12 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Frontend
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Editor
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -22,3 +23,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backend
+exe2vision-backend/venv/
+exe2vision-backend/__pycache__/
+exe2vision-backend/**/__pycache__/
+exe2vision-backend/**/*.py[cod]
+exe2vision-backend/.env
+exe2vision-backend/uploaded_files/
+exe2vision-backend/output_images/
+exe2vision-backend/*.db
+exe2vision-backend/*.sqlite3

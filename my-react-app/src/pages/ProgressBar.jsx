@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import HeaderLogin from "../components/HeaderAfterLogin";
-import { useLocation,useNavigate } from "react-router-dom";
-
+import { useLocation, useNavigate } from "react-router-dom";
+import { uploadScan } from "../api";
 
 const FileAnalysisProgress = () => {
   const steps = [
@@ -13,33 +13,66 @@ const FileAnalysisProgress = () => {
 
   const [progress, setProgress] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
+  const [error, setError] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const fileName = location.state?.fileName || "File.exe";
-
+  const file = location.state?.file;
 
   useEffect(() => {
+    let scanResult = null;
+
+    // Start the real API call immediately
+    if (file) {
+      uploadScan(file)
+        .then((res) => { scanResult = res.data.scan_result; })
+        .catch((err) => {
+          setError(err.response?.data?.detail || "Scan failed");
+        });
+    }
+
     const interval = setInterval(() => {
       setProgress((prev) => {
         const next = prev + 1;
-
-        // Step logic
         if (next <= 25) setStepIndex(0);
         else if (next <= 50) setStepIndex(1);
         else if (next <= 75) setStepIndex(2);
         else setStepIndex(3);
 
-        // When analysis reaches 100%, go to results
-        if (next === 100) {
+        if (next >= 100) {
+          clearInterval(interval);
           setTimeout(() => {
-            navigate("/result", {
-              state: {
-                fileName,
-                status: "Benign",
-                confidence: "99.21%",
-                date: new Date().toLocaleString(),
-              },
-            });
+            if (scanResult) {
+              navigate("/result", {
+                state: {
+                  fileName: scanResult.filename || fileName,
+                  status: scanResult.result,
+                  confidence: `${(scanResult.probability * 100).toFixed(2)}%`,
+                  date: scanResult.scanned_at
+                    ? new Date(scanResult.scanned_at).toLocaleString()
+                    : new Date().toLocaleString(),
+                  scanId: scanResult.id,
+                },
+              });
+            } else if (!error) {
+              // API still in flight — wait a bit more
+              const wait = setInterval(() => {
+                if (scanResult) {
+                  clearInterval(wait);
+                  navigate("/result", {
+                    state: {
+                      fileName: scanResult.filename || fileName,
+                      status: scanResult.result,
+                      confidence: `${(scanResult.probability * 100).toFixed(2)}%`,
+                      date: scanResult.scanned_at
+                        ? new Date(scanResult.scanned_at).toLocaleString()
+                        : new Date().toLocaleString(),
+                      scanId: scanResult.id,
+                    },
+                  });
+                }
+              }, 500);
+            }
           }, 400);
         }
 
@@ -97,7 +130,9 @@ const FileAnalysisProgress = () => {
 
         {/* INFORMATION BOX */}
         <div className="bg-[#0b1527] text-slate-300 p-4 rounded-lg text-sm md:text-base text-center">
-          This process usually takes 20–30 seconds. Please do not close or refresh the page.
+          {error
+            ? <span className="text-red-400">{error}</span>
+            : "This process usually takes 20–30 seconds. Please do not close or refresh the page."}
         </div>
       </div>
     </div>
