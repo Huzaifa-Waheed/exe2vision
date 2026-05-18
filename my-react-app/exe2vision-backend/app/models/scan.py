@@ -8,6 +8,7 @@ class ScanRecord(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     filename = Column(String)
+    file_type = Column(String, default="exe")  # "exe" or "asm"
     result = Column(String)
     probability = Column(Float)
     scanned_at = Column(DateTime, default=datetime.utcnow)
@@ -19,6 +20,7 @@ class ScanRecord(Base):
             "id": self.id,
             "user_id": self.user_id,
             "filename": self.filename,
+            "file_type": self.file_type or "exe",
             "result": self.result,
             "probability": self.probability,
             "scanned_at": self.scanned_at.isoformat() if self.scanned_at else None,

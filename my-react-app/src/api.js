@@ -31,6 +31,12 @@ export const uploadScan = (file) => {
   return api.post("/scan/upload", form);
 };
 
+export const uploadAsmScan = (file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post("/scan/upload-asm", form);
+};
+
 export const getScanHistory = (params = {}) =>
   api.get("/scan/history", { params });
 

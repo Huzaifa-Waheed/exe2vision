@@ -21,6 +21,16 @@ def upload_and_scan(
     return {"message": "Scan completed", "scan_result": scan.to_dict()}
 
 
+@router.post("/upload-asm")
+def upload_and_scan_asm(
+    file: UploadFile = File(...),
+    db: Session = Depends(DatabaseManager.get_db),
+    user=Depends(get_current_user),
+):
+    scan = ScanManager.process_asm_scan(db, user, file)
+    return {"message": "ASM scan completed", "scan_result": scan.to_dict()}
+
+
 @router.get("/history")
 def scan_history(
     db: Session = Depends(DatabaseManager.get_db),

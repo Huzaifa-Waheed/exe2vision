@@ -184,6 +184,11 @@ const ScanHistory = () => {
                         : <CheckmarkSquareIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-500 flex-shrink-0" />
                       }
                       <span className="truncate">{scan.filename}</span>
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                        scan.file_type === "asm"
+                          ? "bg-purple-900/40 text-purple-400 border border-purple-700/50"
+                          : "bg-cyan-900/40 text-cyan-400 border border-cyan-700/50"
+                      }`}>{scan.file_type === "asm" ? "ASM" : "EXE"}</span>
                     </td>
                     <td className="px-3 sm:px-6 py-2 text-gray-300 hidden sm:table-cell">{scan.scanDate}</td>
                     <td className="hidden md:table-cell px-3 sm:px-6 py-2">

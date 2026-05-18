@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import HeaderLogin from "../components/HeaderAfterLogin";
 import { useLocation, useNavigate } from "react-router-dom";
-import { uploadScan } from "../api";
+import { uploadScan, uploadAsmScan } from "../api";
 
 const FileAnalysisProgress = () => {
   const steps = [
@@ -18,13 +18,15 @@ const FileAnalysisProgress = () => {
   const navigate = useNavigate();
   const fileName = location.state?.fileName || "File.exe";
   const file = location.state?.file;
+  const isAsm = location.state?.isAsm || false;
 
   useEffect(() => {
     let scanResult = null;
 
     // Start the real API call immediately
     if (file) {
-      uploadScan(file)
+      const scanFn = isAsm ? uploadAsmScan : uploadScan;
+      scanFn(file)
         .then((res) => { scanResult = res.data.scan_result; })
         .catch((err) => {
           setError(err.response?.data?.detail || "Scan failed");

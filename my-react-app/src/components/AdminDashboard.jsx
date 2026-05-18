@@ -229,12 +229,17 @@ const AdminDashboard = () => {
                     />
                   </div>
                   <div className="col-span-2 text-sm truncate">{scan.email}</div>
-                  <div className="col-span-3 flex items-center text-sm font-medium">
+                  <div className="col-span-3 flex items-center text-sm font-medium gap-2">
                     {scan.status === "Malicious"
-                      ? <WarningTriangleIcon className="w-4 h-4 mr-2 text-red-500 flex-shrink-0" />
-                      : <CheckmarkSquareIcon className="w-4 h-4 mr-2 text-green-500 flex-shrink-0" />
+                      ? <WarningTriangleIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                      : <CheckmarkSquareIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
                     }
                     <span className="truncate">{scan.filename}</span>
+                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                      scan.file_type === "asm"
+                        ? "bg-purple-900/40 text-purple-400 border border-purple-700/50"
+                        : "bg-cyan-900/40 text-cyan-400 border border-cyan-700/50"
+                    }`}>{scan.file_type === "asm" ? "ASM" : "EXE"}</span>
                   </div>
                   <div className="col-span-2 text-xs text-gray-400">{scan.scanDate}</div>
                   <div className="col-span-3 flex justify-center">

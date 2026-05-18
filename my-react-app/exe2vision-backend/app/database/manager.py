@@ -83,11 +83,13 @@ class DatabaseManager:
         filename: str,
         result: str,
         probability: float,
-        file_path: str
+        file_path: str,
+        file_type: str = "exe"
     ):
         scan = ScanRecord(
             user_id=user_id,
             filename=filename,
+            file_type=file_type,
             result=result,
             probability=probability,
             file_path=file_path,

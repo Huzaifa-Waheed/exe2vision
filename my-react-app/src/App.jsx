@@ -8,6 +8,7 @@ import SignUp from "./pages/UserSignUp.jsx";
 import AboutResearch from "./pages/AboutResearch";
 import ExeVisionHome from "./pages/ExeVisionHome";
 import ScanMalware from "./pages/ScanMalware.jsx";
+import ScanAsm from "./pages/ScanAsm.jsx";
 import ProgressBar from "./pages/ProgressBar.jsx";
 import Result from "./pages/Result.jsx";
 import ScanHistoryComponent from "./pages/ScanHistory";
@@ -29,6 +30,9 @@ const App = () => {
 
           <Route path="/scanmalware" element={
             <ProtectedRoute><ScanMalware /></ProtectedRoute>
+          } />
+          <Route path="/scanasm" element={
+            <ProtectedRoute><ScanAsm /></ProtectedRoute>
           } />
           <Route path="/progress" element={
             <ProtectedRoute><ProgressBar /></ProtectedRoute>

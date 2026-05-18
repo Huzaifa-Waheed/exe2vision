@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/auth': 'http://localhost:8000',
       '/scan/upload': 'http://localhost:8000',
+      '/scan/upload-asm': 'http://localhost:8000',
       '/scan/history': 'http://localhost:8000',
       '/scan/report': 'http://localhost:8000',
       '/admin/scans': 'http://localhost:8000',

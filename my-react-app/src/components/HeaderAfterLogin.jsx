@@ -55,6 +55,13 @@ const HeaderLogin = () => {
           </Link>
 
           <Link
+            to="/scanasm"
+            className="text-gray-300 hover:text-cyan-400 transition-colors text-sm sm:text-base flex items-center space-x-2 font-medium py-1 px-2 rounded-lg"
+          >
+            Asm Scan
+          </Link>
+
+          <Link
             to="/scanhistory"
             className="text-gray-300 hover:text-cyan-400 transition-colors text-sm sm:text-base flex items-center space-x-2 font-medium py-1 px-2 rounded-lg"
           >
@@ -103,6 +110,14 @@ const HeaderLogin = () => {
             onClick={() => setMenuOpen(false)}
           >
             New Scan
+          </Link>
+
+          <Link
+            to="/scanasm"
+            className="text-gray-300 hover:text-cyan-400 transition-colors text-lg font-medium py-3 px-4 rounded-lg bg-gray-800 hover:bg-gray-700/50"
+            onClick={() => setMenuOpen(false)}
+          >
+            Asm Scan
           </Link>
 
           <Link
