@@ -61,7 +61,7 @@ class MLModel:
             return np.asarray(img)
         except Exception as e:
             logging.exception("convert_to_rgb failed: %s", e)
-            return np.zeros((800, 800, 3), dtype=np.uint8)
+            return np.zeros((825, 825, 3), dtype=np.uint8)
 
     def classify_image(self, image: np.ndarray) -> dict:
         model = _load_model()

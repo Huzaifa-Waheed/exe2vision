@@ -1,0 +1,8 @@
+{
+  "include": ["app"],
+  "exclude": ["venv", "uploaded_files", "output_images"],
+  "venvPath": ".",
+  "venv": "venv",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic"
+}

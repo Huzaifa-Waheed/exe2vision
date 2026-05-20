@@ -1,0 +1,567 @@
+SYSTEM IMPLEMENTATION
+=====================
+Exe2Vision: AI-Driven Malware Detection Through Executable Visualization
+=========================================================================
+
+
+1. INTRODUCTION TO SYSTEM IMPLEMENTATION
+-----------------------------------------
+
+The implementation of Exe2Vision follows a modern full-stack architecture that
+brings together a React-based frontend, a FastAPI-powered backend, a PostgreSQL
+relational database, and a deep learning inference engine built on PyTorch. The
+system was designed with a clear separation of concerns, where each layer of the
+application handles a well-defined responsibility. The frontend manages user
+interaction and presentation, the backend handles business logic, file processing,
+and API communication, while the machine learning pipeline performs the actual
+malware classification. This chapter describes, in detail, how each component of
+the system was implemented, how they interact with one another, and the reasoning
+behind the key technical decisions made throughout the development process.
+
+
+2. SYSTEM ARCHITECTURE OVERVIEW
+---------------------------------
+
+Exe2Vision is structured as a client-server application. The frontend is a
+Single Page Application (SPA) built with React 19 and Vite, styled using
+Tailwind CSS v4. The backend is a RESTful API built with FastAPI (Python), which
+exposes endpoints for authentication, file scanning, scan history retrieval, PDF
+report generation, and administrative operations. Communication between the
+frontend and backend happens over HTTP using the Axios library, with session
+state maintained through HTTP-only cookies.
+
+The overall project is organized into two main directories within a single
+repository:
+
+  - my-react-app/          → Frontend (React + Vite)
+  - exe2vision-backend/    → Backend (FastAPI + SQLAlchemy)
+
+This monorepo structure keeps both parts of the system together, making it
+easier to manage, version, and deploy as a single cohesive project.
+
+
+3. BACKEND IMPLEMENTATION
+--------------------------
+
+3.1 Framework and Project Structure
+-------------------------------------
+
+The backend was implemented using FastAPI, a modern Python web framework known
+for its high performance, automatic OpenAPI documentation generation, and native
+support for asynchronous programming. The backend project follows a layered
+architecture with the following directory structure:
+
+  exe2vision-backend/
+  ├── app/
+  │   ├── api/           → Route handlers (auth, scan, admin)
+  │   ├── core/          → Configuration, security, dependencies
+  │   ├── database/      → Database session, base model, manager
+  │   ├── models/        → SQLAlchemy ORM models
+  │   ├── schemas/       → Pydantic request/response schemas
+  │   ├── services/      → Business logic (scanning, ML, reports)
+  │   └── utils/         → Utility functions (OTP generation)
+  └── main.py            → Application entry point
+
+The application entry point (main.py) initializes the FastAPI instance,
+registers the three API routers (authentication, scanning, and administration),
+and triggers database table creation on startup through SQLAlchemy's
+metadata.create_all() mechanism.
+
+3.2 Database Design and ORM
+-----------------------------
+
+PostgreSQL was chosen as the relational database due to its robustness,
+support for complex queries, and wide adoption in production environments.
+SQLAlchemy was used as the Object Relational Mapper (ORM), allowing the
+application to interact with the database through Python objects rather than
+raw SQL queries.
+
+Three database models were defined:
+
+  (a) User Model (users table)
+      Stores registered user information including a unique identifier, full
+      name, email address, hashed password, role (either "user" or "admin"),
+      and account creation timestamp. The role field is central to the
+      role-based access control mechanism of the system.
+
+  (b) ScanRecord Model (scan_records table)
+      Stores the result of every file scan performed on the platform. Each
+      record holds a foreign key reference to the user who performed the scan,
+      the original filename, the file type (either "exe" or "asm"), the
+      classification result ("Benign" or "Malware"), the model's confidence
+      probability, the timestamp of the scan, the path to the uploaded file on
+      disk, and a soft-deletion flag (is_deleted). Soft deletion was chosen
+      over hard deletion so that records can be logically removed from the
+      user-facing views without permanently losing data from the database.
+
+  (c) OTPRecord Model (otp_records table)
+      Manages one-time passwords issued during the password reset flow. Each
+      record stores the target email address, the generated OTP code, creation
+      and expiry timestamps, and counters tracking how many OTPs have been
+      generated and verified for that email.
+
+Database session management is handled through a dedicated DatabaseManager
+class, which provides static methods for all database operations including user
+creation, user lookup, OTP saving and verification, scan record saving, and
+various administrative query and deletion operations. A get_db() generator
+method is used as a FastAPI dependency to provide a database session to each
+request and ensure it is properly closed after the request completes.
+
+3.3 Authentication and Session Management
+------------------------------------------
+
+User authentication in Exe2Vision is implemented using a cookie-based session
+mechanism. When a user successfully logs in or registers, the backend sets an
+HTTP-only cookie named "user_email" on the response. This cookie is then
+automatically included by the browser in all subsequent requests to the backend,
+allowing the server to identify the currently authenticated user without
+requiring a token to be manually managed on the client side.
+
+The get_current_user() dependency function reads this cookie from the incoming
+request, looks up the corresponding user in the database, and either returns
+the user object or raises an HTTP 401 Unauthorized exception if the cookie is
+absent or the email does not match any registered user. This dependency is
+injected into all protected API endpoints.
+
+Password security is implemented using PBKDF2-HMAC-SHA256, a key derivation
+function from Python's standard library. Each password is hashed with a
+randomly generated 16-byte salt and 200,000 iterations of the SHA-256 hash
+function. The resulting hash is stored in the format:
+
+  pbkdf2_sha256$<iterations>$<base64_salt>$<base64_derived_key>
+
+During login, the stored hash is reconstructed and compared against the
+provided password using Python's hmac.compare_digest() function, which
+performs a constant-time comparison to prevent timing-based attacks.
+
+3.4 API Endpoints
+------------------
+
+The backend exposes three groups of API endpoints, each organized under a
+separate FastAPI router:
+
+  (a) Authentication Router (/auth)
+      - POST /auth/register       → Creates a new user account
+      - POST /auth/login          → Authenticates a user and sets session cookie
+      - POST /auth/logout         → Clears the session cookie
+      - GET  /auth/me             → Returns the currently authenticated user
+      - POST /auth/request-reset  → Sends an OTP to the user's email for
+                                    password reset
+      - POST /auth/reset-password → Verifies the OTP and updates the password
+      - POST /auth/ensure-admin   → Seeds the admin account if it does not
+                                    exist and establishes an admin session
+
+  (b) Scan Router (/scan)
+      - POST /scan/upload         → Accepts a .exe file, runs the full ML
+                                    pipeline, and returns the scan result
+      - POST /scan/upload-asm     → Accepts a .asm file, runs the ASM-specific
+                                    ML pipeline, and returns the scan result
+      - GET  /scan/history        → Returns the authenticated user's scan
+                                    history with optional filters for result
+                                    type and date range
+      - GET  /scan/report/{id}    → Generates and streams a PDF report for a
+                                    specific scan
+      - GET  /scan/report         → Generates and streams a PDF report for the
+                                    user's full scan history
+
+  (c) Admin Router (/admin)
+      - GET    /admin/scans       → Returns all scan records across all users,
+                                    with user email joined from the users table
+      - DELETE /admin/scan/{id}   → Soft-deletes a single scan record
+      - DELETE /admin/scans       → Soft-deletes a selected list of scan records
+      - DELETE /admin/scans/all   → Soft-deletes all scan records in the system
+
+All scan and admin endpoints are protected by the get_current_user() dependency,
+ensuring that only authenticated users can access them.
+
+3.5 File Management
+--------------------
+
+Uploaded files are handled by the FileManager service class. When a file is
+received, its extension is validated against an allowed set. For EXE uploads,
+only files with the ".exe" extension are accepted, and the first two bytes of
+the saved file are verified to be the PE magic bytes "MZ" to confirm it is a
+genuine Windows Portable Executable. For ASM uploads, only files with the
+".asm" extension are accepted, and no binary validation is needed since the
+content is plain text.
+
+Each uploaded file is saved to a local "uploaded_files" directory with a UUID
+prefix prepended to the original filename to prevent naming collisions. The
+full file path is stored in the database alongside the scan result for
+traceability.
+
+
+4. MACHINE LEARNING PIPELINE
+------------------------------
+
+The core innovation of Exe2Vision lies in its machine learning pipeline, which
+transforms executable or assembly code into a visual representation and then
+classifies that image using a deep convolutional neural network. The pipeline
+consists of three sequential stages: disassembly (for EXE files), n-gram RGB
+image generation, and deep learning classification.
+
+4.1 Stage 1 — Disassembly (EXE Pipeline Only)
+-----------------------------------------------
+
+When a Windows executable (.exe) file is uploaded, the first step is to convert
+its binary machine code into human-readable assembly instructions. This is
+accomplished using two Python libraries: pefile and Capstone.
+
+The pefile library parses the Portable Executable (PE) file format, extracting
+the file header to determine the target architecture (x86-32, x86-64, ARM, or
+ARM64) and iterating over the PE sections to identify those marked as executable
+using the IMAGE_SCN_MEM_EXECUTE flag (0x20000000). Only executable sections are
+disassembled, which avoids processing data sections that contain no meaningful
+instructions.
+
+The Capstone disassembly framework is then used to decode the raw bytes of each
+executable section into assembly mnemonics and operands. The virtual address of
+each section is used as the base offset during disassembly so that instruction
+addresses are meaningful. The output is a plain text string where each line
+contains one assembly instruction in the format "mnemonic operand(s)".
+
+For ASM file uploads, this disassembly stage is skipped entirely. The uploaded
+.asm file is read directly as plain text, since it already contains assembly
+instructions in a human-readable format. This makes the ASM scan pipeline
+faster and more straightforward.
+
+4.2 Stage 2 — N-Gram RGB Image Generation
+-------------------------------------------
+
+Once the assembly text is available (either from disassembly or direct upload),
+it is passed to the image generation module (asm_to_image.py), which converts
+the assembly instructions into an 800×800 RGB image. This visual representation
+forms the basis for the subsequent deep learning classification.
+
+The image generation process works as follows:
+
+  Step 1 — Tokenization:
+  Each line of the assembly text is cleaned and tokenized. Lines that are
+  comments (starting with ";"), labels (ending with ":"), or assembler
+  directives (starting with ".") are discarded, as they do not represent
+  executable instructions. The remaining lines are split into individual tokens
+  by whitespace, with commas replaced by spaces to normalize operand separators.
+
+  Step 2 — Bigram Extraction:
+  From each tokenized line, bigrams (sequences of two consecutive tokens) are
+  extracted. Bigrams were chosen as the n-gram size because they capture the
+  relationship between an instruction mnemonic and its first operand, which
+  encodes meaningful behavioral information about the code. For example, the
+  bigram "mov eax" conveys more information than either "mov" or "eax" alone.
+  Up to 16 bigrams are extracted per line (SLOTS_PER_LINE = 16).
+
+  Step 3 — Color Mapping:
+  Each unique bigram is assigned a unique RGB color. Pre-defined color mappings
+  are loaded from Excel or CSV files stored in the NGRAMS directory. If a bigram
+  is not found in the pre-defined mappings, a new unique random color is
+  generated and assigned to it dynamically. This ensures that the same bigram
+  always maps to the same color within a scan, while new or unseen bigrams are
+  still represented visually.
+
+  Step 4 — Pixel Assignment:
+  The 800×800 image is treated as a flat array of 640,000 pixels. Bigrams are
+  mapped to pixels sequentially, row by row. Each bigram occupies one pixel,
+  and unused slots within a line are left as the default gray color
+  (RGB: 180, 180, 180). This structured layout means that the spatial position
+  of a pixel in the image corresponds to the position of its bigram within the
+  assembly code, preserving the sequential structure of the program.
+
+The result is a compact, information-dense visual fingerprint of the executable
+or assembly file. Malicious files tend to produce visually distinct patterns
+compared to benign files, which is what the deep learning model learns to
+distinguish.
+
+4.3 Stage 3 — Deep Learning Classification
+--------------------------------------------
+
+The generated 800×800 RGB image is passed to the classification module
+(ml_model.py), which uses a fine-tuned ResNet-50 convolutional neural network
+to classify the image as either "Benign" or "Malware".
+
+ResNet-50 is a 50-layer deep residual network originally designed for the
+ImageNet large-scale visual recognition challenge. Its residual (skip)
+connections allow gradients to flow more easily during training, enabling the
+network to learn deep representations without suffering from the vanishing
+gradient problem. For this project, the final fully connected layer of ResNet-50
+was replaced with a new linear layer with two output neurons corresponding to
+the two classes (Benign and Malware). The model weights were loaded from a
+pre-trained checkpoint file (resnet.pth).
+
+Before being fed into the network, the image undergoes the following
+preprocessing transformations:
+
+  - Resize to 224×224 pixels (the standard input size for ResNet)
+  - Convert to a PyTorch tensor with pixel values normalized to [0, 1]
+  - Normalize using ImageNet mean [0.485, 0.456, 0.406] and standard
+    deviation [0.229, 0.224, 0.225]
+
+The model runs in evaluation mode (model.eval()) with gradient computation
+disabled (torch.no_grad()) to ensure efficient and deterministic inference.
+The output logits are passed through a softmax function to produce class
+probabilities. The class with the highest probability is selected as the
+prediction, and its probability value is returned as the confidence score.
+
+The model is loaded lazily on the first inference request and cached in memory
+for all subsequent requests, avoiding the overhead of reloading the model
+weights on every scan.
+
+The system supports both CPU and GPU inference. If a CUDA-capable GPU is
+available, the model and input tensors are automatically moved to the GPU for
+faster processing. Otherwise, inference runs on the CPU.
+
+4.4 Fallback Mechanism
+-----------------------
+
+To ensure the system remains functional even when the ML pipeline encounters
+an unexpected error (such as a corrupted file, an unsupported binary format,
+or a missing model checkpoint), a fallback mechanism is implemented in the
+ScanManager. If any exception is raised during disassembly, image generation,
+or classification, the system logs the error and falls back to a randomly
+generated result with a confidence score between 0.70 and 0.99. This prevents
+the API from returning an unhandled server error to the user, though in a
+production deployment this fallback would be replaced with a proper error
+response.
+
+4.5 PDF Report Generation
+--------------------------
+
+After a scan is completed, users can download a PDF report summarizing the
+results. Reports are generated using the ReportLab library. Two types of
+reports are supported:
+
+  - Single Scan Report: Contains the filename, classification result,
+    confidence probability, and scan timestamp for one specific scan.
+
+  - History Report: Contains a tabular summary of all scans performed by the
+    user, with optional filtering by result type and date range.
+
+Reports are generated in memory as BytesIO streams and streamed directly to
+the client as downloadable PDF files, without being written to disk.
+
+
+5. FRONTEND IMPLEMENTATION
+----------------------------
+
+5.1 Framework and Tooling
+--------------------------
+
+The frontend was built using React 19 with the Vite build tool. Vite was chosen
+over Create React App because of its significantly faster development server
+startup time and hot module replacement (HMR) performance, which improves the
+development experience. Tailwind CSS v4 was used for styling, providing a
+utility-first approach that allows rapid UI development without writing custom
+CSS files. React Router DOM v7 was used for client-side routing.
+
+5.2 Application Structure
+--------------------------
+
+The frontend source code is organized as follows:
+
+  src/
+  ├── api.js              → Centralized Axios API client
+  ├── App.jsx             → Root component with route definitions
+  ├── pages/              → Full-page components (one per route)
+  └── components/         → Reusable UI components
+
+This structure separates page-level concerns from reusable component logic,
+making the codebase easier to navigate and maintain.
+
+5.3 API Integration
+--------------------
+
+All communication with the backend is handled through a centralized api.js
+module. This module creates a single Axios instance configured with
+withCredentials: true, which ensures that the session cookie is automatically
+included in every request. All API functions are exported from this module,
+providing a clean and consistent interface for the rest of the application.
+
+The Vite development server is configured with a proxy that forwards specific
+API path prefixes (/auth, /scan/upload, /scan/upload-asm, /scan/history,
+/scan/report, /admin/scans, /admin/scan) to the FastAPI backend running on
+port 8000. This proxy eliminates cross-origin resource sharing (CORS) issues
+during development and allows the frontend to make API calls using relative
+paths without needing to know the backend's full URL.
+
+5.4 Routing and Protected Routes
+----------------------------------
+
+Client-side routing is managed by React Router DOM. The application defines
+routes for all pages including the home page, login, registration, password
+reset flow, malware scanning, ASM scanning, scan history, results, and the
+admin dashboard.
+
+A ProtectedRoute component was implemented to guard routes that require
+authentication. When a user navigates to a protected route, the component
+makes a GET /auth/me request to the backend to verify the current session.
+While the verification is in progress, a loading spinner is displayed. If the
+session is invalid or the cookie is absent, the user is redirected to the
+login page. For the admin dashboard route, an additional check is performed
+to verify that the authenticated user has the "admin" role. Regular users
+attempting to access the admin dashboard are redirected to the scan page.
+
+This approach ensures that authentication is always verified against the
+server, rather than relying on client-side state that could be manipulated.
+
+5.5 User Authentication Pages
+-------------------------------
+
+  Login Page:
+  The login page collects the user's email and password, performs client-side
+  validation, and submits the credentials to POST /auth/login. On success, the
+  user is redirected based on their role — admins go to the admin dashboard,
+  while regular users go to the scan page. A special case handles the admin
+  credentials (admin@admin.com / Admin@123): if these credentials are entered,
+  the frontend calls POST /auth/ensure-admin, which seeds the admin account in
+  the database if it does not already exist before establishing the session.
+
+  Registration Page:
+  The registration page collects the user's full name, email, and password and
+  submits them to POST /auth/register. On success, the user is automatically
+  logged in (the backend sets the session cookie on registration) and redirected
+  to the scan page.
+
+  Password Reset Flow:
+  The password reset process spans three pages. On the first page, the user
+  enters their registered email address, which triggers a POST /auth/request-reset
+  call that generates and sends an OTP. The user is then navigated to the OTP
+  verification page, where they enter the six-digit code. The verified email and
+  OTP code are passed via React Router navigation state to the final page, where
+  the user sets a new password. The new password is submitted along with the
+  email and OTP to POST /auth/reset-password, which verifies the OTP and updates
+  the password in the database.
+
+5.6 Malware Scanning Pages
+----------------------------
+
+  EXE Scan Page (ScanMalware):
+  This page allows users to upload a Windows executable (.exe) file for
+  analysis. Files can be selected through a file browser dialog or dragged and
+  dropped onto the upload area. Client-side validation ensures that only files
+  with the ".exe" extension are accepted before submission. When the user clicks
+  "Scan File", they are navigated to the progress page with the selected file
+  object passed through navigation state.
+
+  ASM Scan Page (ScanAsm):
+  This page mirrors the EXE scan page but accepts assembly (.asm) files instead.
+  It follows the same upload and validation pattern, but navigates to the
+  progress page with an additional isAsm flag set to true in the navigation
+  state, which tells the progress page to use the ASM-specific API endpoint.
+
+  Progress Page:
+  The progress page serves as a visual feedback screen while the scan is being
+  processed. It displays an animated progress bar that advances from 0% to 100%
+  over approximately 12 seconds, with step labels that describe the current
+  stage of analysis. Simultaneously, the actual API call (either POST
+  /scan/upload or POST /scan/upload-asm) is made in the background as soon as
+  the page loads. When the progress bar reaches 100%, the page waits for the
+  API response and then navigates to the results page with the actual scan data.
+
+  Results Page:
+  The results page displays the outcome of the scan, including the filename,
+  classification result (Benign or Malware), confidence score, and scan
+  timestamp. A "Download PDF Report" button triggers a GET /scan/report/{id}
+  request that streams the PDF report to the user's browser as a downloadable
+  file. A "Scan Another File" button navigates the user back to the scan page.
+
+5.7 Scan History Page
+----------------------
+
+The scan history page fetches the authenticated user's complete scan history
+from GET /scan/history and displays it in a paginated table. Each row shows
+the filename, a file type badge (EXE or ASM), the scan date, and the
+classification status (Malicious or Safe) with color-coded indicators. A
+filter panel allows users to narrow down results by status (All, Malicious,
+Safe) and by a date range. The date filter compares against the raw scanned_at
+ISO timestamp from the backend to ensure accurate date-based filtering. Each
+row also has a download button that fetches the individual PDF report for that
+scan. A "Download Overall Report" button at the top generates a PDF covering
+all currently filtered scans.
+
+5.8 Admin Dashboard
+--------------------
+
+The admin dashboard is accessible only to users with the "admin" role. It
+provides a comprehensive view of all scan records across all users on the
+platform. The dashboard displays four summary cards showing the total number
+of scans, the number of malware detections, the number of benign files, and
+the count of active users (determined by the number of unique user emails
+associated with scan records).
+
+Below the summary cards, a full table lists every scan record with the user's
+email, filename, file type badge (EXE or ASM), scan date, and classification
+status. Administrators can delete individual records, select multiple records
+for batch deletion, or delete all records at once. All deletions are soft
+deletes — the records are marked as deleted in the database but not physically
+removed, preserving data integrity.
+
+A confirmation modal is displayed before any deletion action is executed,
+requiring the administrator to explicitly confirm the operation. This prevents
+accidental data loss.
+
+
+6. SECURITY CONSIDERATIONS
+----------------------------
+
+Several security measures were incorporated into the implementation:
+
+  - Password Hashing: All passwords are hashed using PBKDF2-HMAC-SHA256 with
+    200,000 iterations and a random 16-byte salt before being stored in the
+    database. Plain-text passwords are never stored or logged.
+
+  - HTTP-Only Cookies: The session cookie is set with the httponly flag,
+    preventing client-side JavaScript from accessing it and mitigating
+    cross-site scripting (XSS) attacks.
+
+  - File Validation: Uploaded EXE files are validated both by extension and
+    by checking the PE magic bytes, preventing non-executable files from being
+    processed. ASM files are validated by extension.
+
+  - Role-Based Access Control: The admin dashboard and all administrative API
+    endpoints are protected by both authentication and role verification,
+    ensuring that regular users cannot access or modify administrative data.
+
+  - Soft Deletion: Scan records are never permanently deleted through the
+    normal application flow, preserving an audit trail of all scanning activity.
+
+  - OTP Expiry: One-time passwords for password reset expire after 15 minutes,
+    limiting the window of opportunity for misuse.
+
+
+7. DEVELOPMENT AND DEPLOYMENT SETUP
+-------------------------------------
+
+The development environment requires Python 3.11 or later for the backend and
+Node.js 18 or later for the frontend. The backend dependencies are managed
+through a requirements.txt file and installed into a Python virtual environment.
+The frontend dependencies are managed through npm.
+
+To run the system locally, the backend is started with Uvicorn:
+
+  uvicorn app.main:app --reload --port 8000
+
+And the frontend development server is started with:
+
+  npm run dev
+
+The Vite development server runs on port 5173 and proxies all API requests to
+the backend on port 8000, allowing both servers to be used together seamlessly
+during development.
+
+For production deployment, the React application is built into a static bundle
+using "npm run build", which can then be served by a web server such as Nginx
+or integrated directly into the FastAPI application as static files.
+
+
+8. SUMMARY
+-----------
+
+The implementation of Exe2Vision successfully integrates a modern web
+application frontend with a robust Python backend and a deep learning inference
+pipeline. The system supports two distinct scanning workflows — one for Windows
+executable files and one for assembly files — both of which converge on the
+same n-gram visualization and ResNet-50 classification pipeline. The use of
+well-established frameworks and libraries at every layer of the stack ensures
+that the system is maintainable, extensible, and capable of being deployed in
+a real-world environment. The role-based access control, cookie-based session
+management, and soft-deletion strategy collectively provide a secure and
+reliable platform for malware analysis.
