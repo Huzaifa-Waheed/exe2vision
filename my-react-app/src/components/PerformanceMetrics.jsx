@@ -10,7 +10,7 @@ const Metrics = () => (
     
     {/* Metric 2: Scan Time */}
     <div className="text-center">
-      <p className="text-2xl md:text-3xl font-bold text-cyan-400">&lt;30s</p>
+      <p className="text-2xl md:text-3xl font-bold text-cyan-400">&lt;10m</p>
       <p className="text-sm text-gray-400 mt-1">Scan Time</p>
     </div>
     

@@ -22,9 +22,10 @@ const FileAnalysisProgress = () => {
 
   useEffect(() => {
     let scanResult = null;
+    let apiCalled = false;
 
-    // Start the real API call immediately
-    if (file) {
+    if (file && !apiCalled) {
+      apiCalled = true;
       const scanFn = isAsm ? uploadAsmScan : uploadScan;
       scanFn(file)
         .then((res) => { scanResult = res.data.scan_result; })
@@ -57,7 +58,6 @@ const FileAnalysisProgress = () => {
                 },
               });
             } else if (!error) {
-              // API still in flight — wait a bit more
               const wait = setInterval(() => {
                 if (scanResult) {
                   clearInterval(wait);
@@ -80,7 +80,7 @@ const FileAnalysisProgress = () => {
 
         return next <= 100 ? next : 100;
       });
-    }, 120);
+    }, 1800);  // 1800ms × 100 steps = 180 seconds = 3 minutes
 
     return () => clearInterval(interval);
   }, []);
@@ -134,7 +134,7 @@ const FileAnalysisProgress = () => {
         <div className="bg-[#0b1527] text-slate-300 p-4 rounded-lg text-sm md:text-base text-center">
           {error
             ? <span className="text-red-400">{error}</span>
-            : "This process usually takes 20–30 seconds. Please do not close or refresh the page."}
+            : "This process usually takes 3–5 minutes. Please do not close or refresh the page."}
         </div>
       </div>
     </div>

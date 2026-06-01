@@ -43,16 +43,20 @@ const ResultPage = () => {
         {/* Top Section */}
         <div className="flex flex-col items-center">
           <div className="w-20 h-20 rounded-full bg-[#0A1324] flex items-center justify-center">
-            <ShieldCheck size={50} className="text-green-400" />
+            <ShieldCheck size={50} className={status === "Malware" ? "text-red-400" : "text-green-400"} />
           </div>
 
-          <h2 className="text-green-400 text-xl md:text-2xl font-semibold mt-4">
-            File is {status}
+          <h2 className={`text-xl md:text-2xl font-semibold mt-4 ${
+            status === "Malware" ? "text-red-400" : "text-green-400"
+          }`}>
+            File is {status === "Malware" ? "Malicious" : "Benign"}
           </h2>
 
           <p className="text-gray-300 text-center max-w-xl mt-3">
-            Our AI model has analyzed this file and found no signs of malicious behavior.
-            The file appears to be safe.
+            {status === "Malware"
+              ? "Our AI model has detected signs of malicious behavior in this file. Exercise caution."
+              : "Our AI model has analyzed this file and found no signs of malicious behavior. The file appears to be safe."
+            }
           </p>
         </div>
 
@@ -90,7 +94,11 @@ const ResultPage = () => {
             <div className="flex items-center gap-2 text-cyan-300 mb-2">
               <Shield size={18} /> <span>Status</span>
             </div>
-            <p className="text-green-400 font-semibold">Safe</p>
+            <p className={`font-semibold ${
+              status === "Malware" ? "text-red-400" : "text-green-400"
+            }`}>
+              {status === "Malware" ? "Malicious" : "Safe"}
+            </p>
           </div>
         </div>
 
