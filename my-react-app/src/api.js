@@ -1,6 +1,11 @@
 import axios from "axios";
 
-const api = axios.create({ withCredentials: true });
+// In development VITE_API_URL is empty → relative URLs → Vite proxy handles it.
+// In production VITE_API_URL is set to the AWS backend URL → direct calls.
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "",
+  withCredentials: true,
+});
 
 // Auth
 export const login = (email, password) =>
