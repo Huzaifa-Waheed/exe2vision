@@ -52,7 +52,7 @@ def get_me(
     request: Request,
     db: Session = Depends(DatabaseManager.get_db)
 ):
-    email = request.cookies.get("user_email")
+    email = request.cookies.get("user_email") or request.headers.get("X-User-Email")
     if not email:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     user = DatabaseManager.get_user_by_email(db, email)
